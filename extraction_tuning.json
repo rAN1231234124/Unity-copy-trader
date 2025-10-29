@@ -1,0 +1,48 @@
+{
+  "extraction_strategies": {
+    "btc_precise": "Extract exact BTC price levels from this trading chart.\n\nIMPORTANT: BTC prices are likely in the 100,000+ range (six figures).\n\n1. Look for RED zones/lines - this is the Stop Loss\n   - Should be BELOW current price for LONG trades\n   - Read the exact number, likely 105,000-106,000 range\n\n2. Look for GREEN zones/lines - these are Take Profits\n   - Should be ABOVE current price for LONG trades\n   - TP1: First green level (closest to current)\n   - TP2: Second green level (middle)\n   - TP3: Third green level (furthest)\n   - Likely in 109,000-125,000 range\n\n3. Current/Entry price\n   - Look for arrows, markers, or current price indicator\n   - Likely around 107,000-108,000\n\nBE VERY PRECISE:\n- Read each digit carefully\n- Don't round numbers\n- If you see 105,626.40 write exactly that\n- If you see 109,147.50 write exactly that\n\nReturn exact prices as JSON:\n{\n  \"stop_loss\": [exact number from red zone],\n  \"take_profit_1\": [lowest green zone price],\n  \"take_profit_2\": [middle green zone price],\n  \"take_profit_3\": [highest green zone price],\n  \"entry_price\": [current/entry price]\n}",
+    "decimal_precise": "Extract trading levels with EXACT decimal precision.\n\nREAD NUMBERS CHARACTER BY CHARACTER:\n1. Main price (before decimal): Read each digit\n2. Decimal point: Note position\n3. Decimal places: Read each decimal digit\n\nCOMMON MISREADS TO AVOID:\n- 105,626.40 vs 105,626.00 (check last digit)\n- 109,147.50 vs 109,174.50 (check digit order)\n- 112,890.20 vs 112,980.20 (check middle digits)\n\nFor each colored zone:\n- RED = Stop Loss\n- GREEN = Take Profits (ordered low to high)\n- Current price marker = Entry\n\nReturn with exact decimal precision.",
+    "digit_by_digit": "Read each price digit-by-digit from the chart.\n\nSTEP 1: Find each price level location\n- Red box/line location\n- Each green box/line location\n- Current price location\n\nSTEP 2: For each location, read digits left to right\n- Hundred thousands digit\n- Ten thousands digit\n- Thousands digit\n- Hundreds digit\n- Tens digit\n- Ones digit\n- Decimal point\n- First decimal place\n- Second decimal place\n\nSTEP 3: Construct the complete number\nExample: 1-0-5-6-2-6-.-4-0 = 105626.40\n\nReturn exact prices found."
+  },
+  "validation_adjustments": {
+    "btc_price_range": {
+      "min": 90000,
+      "max": 150000,
+      "typical_sl_distance": 0.015,
+      "typical_tp1_distance": 0.015,
+      "typical_tp2_distance": 0.05,
+      "typical_tp3_distance": 0.15
+    }
+  },
+  "common_corrections": {
+    "digit_swaps": [
+      [
+        "6",
+        "8"
+      ],
+      [
+        "1",
+        "7"
+      ],
+      [
+        "0",
+        "8"
+      ],
+      [
+        "3",
+        "8"
+      ],
+      [
+        "5",
+        "6"
+      ]
+    ],
+    "decimal_issues": [
+      ".00",
+      ".40",
+      ".50",
+      ".20",
+      ".80"
+    ]
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "discord_token": "YOUR_DISCORD_TOKEN_HERE",
+  "gpt4_api_key": "YOUR_GPT4_API_KEY_HERE",
+  "channel_ids": [123456789012345678, 987654321098765432],
+  "neil_usernames": ["Nurse Neil 💉 | Unity", "Neil Trading", "Neilarora", "nycran"],
+  "alert_tags": ["@Neilarora Alerts"],
+  "webhook_url": "",
+  "database_path": "signals.db",
+  "log_level": "INFO",
+  "enable_notifications": true,
+  "min_confidence": 0.7
+}
