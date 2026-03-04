@@ -43,15 +43,16 @@ class Config:
     def load_config(self):
         """Load configuration from JSON file"""
         if not Path(self.config_file).exists():
-            print(f"ERROR: {self.config_file} not found!")
-            print("Please create a config.json file with your settings")
+            print(f"\n❌ config.json not found.")
+            print(f"   Copy config.example.json to config.json and fill in your details.\n")
             sys.exit(1)
 
         try:
             with open(self.config_file, 'r', encoding='utf-8') as f:
                 config = json.load(f)
         except json.JSONDecodeError as e:
-            print(f"ERROR: Invalid JSON in {self.config_file}: {e}")
+            print(f"\n❌ config.json has a formatting error: {e}")
+            print(f"   Use a JSON validator (jsonlint.com) to fix it.\n")
             sys.exit(1)
 
         self.DISCORD_TOKEN = config.get("discord_token", "")
@@ -273,17 +274,10 @@ class StableNeilBot(discord.Client):
     async def on_ready(self):
         """Called when bot is ready"""
         self.last_heartbeat = time.time()
-        logging.info(f"✓ Logged in as {self.user}")
-        logging.info(f"✓ Monitoring {len(self.config.CHANNEL_IDS)} channels")
+        logging.info(f"Logged in as {self.user}")
 
-        print("\n" + "="*60)
-        print("✅ STABLE NEIL BOT ACTIVE")
-        print("="*60)
-        print(f"📊 Monitoring {len(self.config.CHANNEL_IDS)} channels")
-        print(f"👤 Tracking {len(self.config.NEIL_USERNAMES)} usernames")
-        print(f"🤖 Chart Extraction: {'Enabled' if self.chart_extractor else 'Disabled'}")
-        print("="*60)
-        print("\n⏳ Waiting for signals...\n")
+        print("\n✅ Bot is ON and watching for signals.")
+        print("   Press Ctrl+C to stop.\n")
 
         # Start heartbeat monitor
         self.loop.create_task(self.heartbeat_monitor())
@@ -320,8 +314,6 @@ class StableNeilBot(discord.Client):
             signal = self.detector.detect_signal(message.content)
 
             if signal:
-                print(f"🔍 Signal detected from {message.author.name}")
-
                 # Enrich signal
                 signal.message_id = message.id
                 signal.author = message.author.name
@@ -389,7 +381,7 @@ class StableNeilBot(discord.Client):
                         signal.entry_price = result.entry_price
 
                     if any([signal.stop_loss, signal.take_profit_1]):
-                        print(f"✅ Extracted prices - SL: {signal.stop_loss} | TP1: {signal.take_profit_1}")
+                        print(f"   📸 Prices read from chart image.")
 
                 except asyncio.TimeoutError:
                     logging.warning("Chart extraction timed out")
@@ -405,30 +397,28 @@ class StableNeilBot(discord.Client):
 
     def print_signal_alert(self, signal: TradingSignal):
         """Print formatted signal alert"""
-        type_emoji = "🟢" if signal.signal_type == "LONG" else "🔴"
+        action = "BUY  🟢" if signal.signal_type == "LONG" else "SELL 🔴"
+        time_str = signal.timestamp.strftime('%H:%M:%S')
 
-        print(f"\n{'='*60}")
-        print(f"🚨 {type_emoji} {signal.signal_type} SIGNAL - {signal.ticker}")
-        print(f"{'='*60}")
-        print(f"Time: {signal.timestamp.strftime('%H:%M:%S')}")
-        print(f"Entry: {signal.notes if signal.notes else 'MARKET'}")
+        print(f"\n{'─'*40}")
+        print(f"  {action}  {signal.ticker}   ({time_str})")
+        print(f"{'─'*40}")
 
-        if any([signal.entry_price, signal.stop_loss, signal.take_profit_1]):
-            print(f"\n📊 PRICE LEVELS:")
-            if signal.entry_price:
-                print(f"  Entry:     ${signal.entry_price:,.4f}")
-            if signal.stop_loss:
-                print(f"  🛑 SL:     ${signal.stop_loss:,.4f}")
-            if signal.take_profit_1:
-                print(f"  🎯 TP1:    ${signal.take_profit_1:,.4f}")
-            if signal.take_profit_2:
-                print(f"  🎯 TP2:    ${signal.take_profit_2:,.4f}")
-            if signal.take_profit_3:
-                print(f"  🎯 TP3:    ${signal.take_profit_3:,.4f}")
-        else:
-            print(f"\n⚠️  NO PRICES EXTRACTED - Check Discord")
+        if signal.entry_price:
+            print(f"  Entry:      ${signal.entry_price:,.4f}")
+        if signal.stop_loss:
+            print(f"  Stop Loss:  ${signal.stop_loss:,.4f}")
+        if signal.take_profit_1:
+            print(f"  Target 1:   ${signal.take_profit_1:,.4f}")
+        if signal.take_profit_2:
+            print(f"  Target 2:   ${signal.take_profit_2:,.4f}")
+        if signal.take_profit_3:
+            print(f"  Target 3:   ${signal.take_profit_3:,.4f}")
 
-        print(f"{'='*60}\n")
+        if not any([signal.entry_price, signal.stop_loss, signal.take_profit_1]):
+            print(f"  No prices found — check Discord for details.")
+
+        print(f"{'─'*40}\n")
 
     async def on_disconnect(self):
         """Called when bot disconnects"""
@@ -456,20 +446,18 @@ async def run_bot_with_restart(config: Config, max_retries: int = 10):
             await bot.start(config.DISCORD_TOKEN)
 
         except discord.errors.LoginFailure:
-            print("ERROR: Invalid Discord token!")
+            print("\n❌ Wrong Discord token. Please check config.json and try again.")
             break
 
         except (discord.errors.ConnectionClosed,
                 discord.errors.GatewayNotFound,
                 aiohttp.ClientError) as e:
             retry_count += 1
-            wait_time = min(60, 5 * retry_count)  # Exponential backoff, max 60s
+            wait_time = min(60, 5 * retry_count)
+            logging.warning(f"Connection lost: {e}")
 
-            print(f"\n⚠️  Connection lost: {e}")
-            print(f"🔄 Reconnecting in {wait_time}s... (Attempt {retry_count}/{max_retries})")
-            logging.warning(f"Connection lost, reconnecting in {wait_time}s")
+            print(f"\n⚠️  Lost connection. Reconnecting in {wait_time}s...")
 
-            # Clean up old bot
             try:
                 await bot.close()
             except:
@@ -478,7 +466,7 @@ async def run_bot_with_restart(config: Config, max_retries: int = 10):
             await asyncio.sleep(wait_time)
 
         except KeyboardInterrupt:
-            print("\n\n👋 Bot stopped by user")
+            print("\n\n👋 Bot stopped.")
             try:
                 await bot.close()
             except:
@@ -487,45 +475,38 @@ async def run_bot_with_restart(config: Config, max_retries: int = 10):
 
         except Exception as e:
             retry_count += 1
-            print(f"\n❌ Error: {e}")
             logging.error(f"Unexpected error: {e}", exc_info=True)
 
             if retry_count < max_retries:
                 wait_time = min(60, 5 * retry_count)
-                print(f"🔄 Restarting in {wait_time}s... (Attempt {retry_count}/{max_retries})")
+                print(f"\n⚠️  Something went wrong. Restarting in {wait_time}s...")
                 await asyncio.sleep(wait_time)
             else:
-                print(f"\n❌ Failed after {max_retries} attempts")
+                print(f"\n❌ Too many errors. Bot stopped. Check neil_bot.log for details.")
                 break
 
-    print("\n✅ Bot shutdown complete")
+    print("\nBot is off.")
 
 def setup_logging(log_level: str = "INFO"):
-    """Setup logging configuration"""
+    """Write detailed logs to file only — keep terminal clean"""
     logging.basicConfig(
         level=getattr(logging, log_level.upper()),
         format='%(asctime)s - %(levelname)s - %(message)s',
         handlers=[
             logging.FileHandler('neil_bot.log', encoding='utf-8'),
-            logging.StreamHandler()
         ]
     )
 
-    # Suppress Discord's verbose logs
+    # Suppress noisy Discord internal logs
     for logger_name in ['discord', 'discord.http', 'discord.gateway']:
         logging.getLogger(logger_name).setLevel(logging.WARNING)
 
 def handle_shutdown(signum, frame):
-    """Handle shutdown signals gracefully"""
-    print("\n⏹️  Shutdown signal received...")
+    print("\n👋 Bot stopped.")
     sys.exit(0)
 
 def main():
     """Main entry point"""
-    print("\n" + "="*60)
-    print("Starting Stable Neil Signal Bot v2.0")
-    print("="*60)
-
     # Set up signal handlers
     signal.signal(signal.SIGINT, handle_shutdown)
     if hasattr(signal, 'SIGTERM'):
@@ -539,20 +520,20 @@ def main():
 
     # Validate token
     if not config.DISCORD_TOKEN or config.DISCORD_TOKEN == "YOUR_DISCORD_TOKEN_HERE":
-        print("\nERROR: Discord token not configured!")
-        print("Please edit config.json and add your Discord token")
+        print("\n❌ No Discord token found.")
+        print("   Open config.json and paste your token next to \"discord_token\".\n")
         sys.exit(1)
 
-    print("\n🚀 Starting bot with auto-reconnection...")
-    print("Press Ctrl+C to stop\n")
+    print("\n🚀 Starting bot...")
 
     # Run the bot with restart capability
     try:
         asyncio.run(run_bot_with_restart(config, max_retries=10))
     except KeyboardInterrupt:
-        print("\n👋 Goodbye!")
+        print("\n👋 Bot stopped.")
     except Exception as e:
-        print(f"\n❌ Fatal error: {e}")
+        print(f"\n❌ Could not start: {e}")
+        print("   Check neil_bot.log for more details.")
         logging.error("Fatal error", exc_info=True)
         sys.exit(1)
 
